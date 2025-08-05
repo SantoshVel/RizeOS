@@ -1,52 +1,47 @@
-# flask_ml_service.py
-from flask import Flask, request, jsonify
 from sentence_transformers import SentenceTransformer, util
 import fitz  # PyMuPDF
-import base64
-import io
 
-app = Flask(__name__)
-model = SentenceTransformer('all-MiniLM-L6-v2')
+# Load BERT model
+model = SentenceTransformer('all-MiniLM-L6-v2')  # Lightweight & fast, you can also try 'paraphrase-MiniLM-L12-v2'
 
-def extract_text_from_pdf(base64_pdf):
-    pdf_bytes = base64.b64decode(base64_pdf)
-    pdf_stream = io.BytesIO(pdf_bytes)
-    doc = fitz.open(stream=pdf_stream, filetype='pdf')
+# Extract text from PDF resume
+def extract_resume_text(pdf_path):
+    doc = fitz.open(pdf_path)
     text = ""
     for page in doc:
         text += page.get_text()
-    return text.strip()
+    return text
 
-@app.route('/match-jobs', methods=['POST'])
-def match_jobs():
-    try:
-        data = request.get_json()
-        resume_b64 = data['resume']
-        jobs = data['jobs']  # Expecting array of jobs with 'description'
+# Recommend jobs
+def recommend_jobs_bert(resume_text, job_descriptions, top_n=3):
+    # Encode the resume and job descriptions
+    resume_embedding = model.encode(resume_text, convert_to_tensor=True)
+    job_embeddings = model.encode(job_descriptions, convert_to_tensor=True)
 
-        resume_text = extract_text_from_pdf(resume_b64)
-        if not resume_text:
-            return jsonify({'message': 'No text found in resume', 'matches': []}), 400
+    # Calculate cosine similarity
+    cosine_scores = util.cos_sim(resume_embedding, job_embeddings)[0]
 
-        job_texts = [job['description'] for job in jobs]
-        resume_embedding = model.encode(resume_text, convert_to_tensor=True)
-        job_embeddings = model.encode(job_texts, convert_to_tensor=True)
+    # Sort by similarity
+    top_results = sorted(list(enumerate(cosine_scores)), key=lambda x: x[1], reverse=True)[:top_n]
+    recommendations = [(job_descriptions[i], float(score)) for i, score in top_results]
+    return recommendations
+    job_descriptions = [
+    "Looking for a data scientist with Python, Pandas, Machine Learning.",
+    "Frontend Developer with React, JavaScript, HTML, CSS.",
+    "Backend Developer with Node.js, Express, MongoDB, APIs.",
+    "AI/ML Engineer with experience in NLP, Deep Learning, PyTorch.",
+    "DevOps engineer with Docker, Kubernetes, AWS, CI/CD.",
+    "Software engineer skilled in Java, Spring Boot, Microservices.",
+    "Data Analyst with SQL, Excel, Tableau, and data cleaning skills.",
+    "Cybersecurity analyst with experience in network protection, firewalls, and risk management.",
+    "Cloud architect familiar with Azure, AWS, infrastructure scaling.",
+    "Research scientist in machine learning and computer vision.",
+]
 
-        scores = util.cos_sim(resume_embedding, job_embeddings)[0]
-        sorted_indices = scores.argsort(descending=True)
+# Upload and read resume
+resume_text = extract_resume_text("")  # Change to your file
+# Get top 3 recommended jobs
+results = recommend_jobs_bert(resume_text, job_descriptions, top_n=3)
 
-        matched_jobs = []
-        for idx in sorted_indices[:5]:  # Return top 5 matches
-            job = jobs[int(idx)]
-            matched_jobs.append({
-                'jobId': str(job['_id']),
-                'score': float(scores[int(idx)])
-            })
-
-        return jsonify({'message': 'Jobs matched successfully', 'matches': matched_jobs}), 200
-
-    except Exception as e:
-        return jsonify({'message': 'Error processing request', 'error': str(e)}), 500
-
-if __name__ == '__main__':
-    app.run(port=5001)
+for idx, (job, score) in enumerate(results):
+    print(f"{idx+1}. Score: {score:.2f} | Job: {job}")

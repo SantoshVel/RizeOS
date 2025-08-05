@@ -64,7 +64,9 @@ const JobCard = ({ job }) => {
         <div style={{ flex: 1 }}>
           <h3 style={titleStyle}>{job.title}</h3>
           <div style={metaStyle}>
-            Posted by {job.postedBy.name} (@{job.postedBy.username}) • {formatDate(job.createdAt)}
+            {job.postedBy ? 
+              `Posted by ${job.postedBy.name} (@${job.postedBy.username})` : 
+              'Posted by Unknown User'} • {formatDate(job.createdAt)}
           </div>
         </div>
         {job.budget && (

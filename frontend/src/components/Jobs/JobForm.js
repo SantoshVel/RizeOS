@@ -245,7 +245,6 @@ const JobForm = () => {
                     fontWeight: 'bold'
                   }}
                 >
-                  ×
                 </button>
               </span>
             ))}
