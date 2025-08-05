@@ -2,7 +2,7 @@ from sentence_transformers import SentenceTransformer, util
 import fitz  # PyMuPDF
 
 # Load BERT model
-model = SentenceTransformer('all-MiniLM-L6-v2')  # Lightweight & fast, you can also try 'paraphrase-MiniLM-L12-v2'
+model = SentenceTransformer('all-MiniLM-L6-v2')
 
 # Extract text from PDF resume
 def extract_resume_text(pdf_path):
@@ -11,6 +11,20 @@ def extract_resume_text(pdf_path):
     for page in doc:
         text += page.get_text()
     return text
+
+# Define sample job descriptions
+job_descriptions = [
+    "Looking for a data scientist with Python, Pandas, Machine Learning.",
+    "Frontend Developer with React, JavaScript, HTML, CSS.",
+    "Backend Developer with Node.js, Express, MongoDB, APIs.",
+    "AI/ML Engineer with experience in NLP, Deep Learning, PyTorch.",
+    "DevOps engineer with Docker, Kubernetes, AWS, CI/CD.",
+    "Software engineer skilled in Java, Spring Boot, Microservices.",
+    "Data Analyst with SQL, Excel, Tableau, and data cleaning skills.",
+    "Cybersecurity analyst with experience in network protection, firewalls, and risk management.",
+    "Cloud architect familiar with Azure, AWS, infrastructure scaling.",
+    "Research scientist in machine learning and computer vision.",
+]
 
 # Recommend jobs
 def recommend_jobs_bert(resume_text, job_descriptions, top_n=3):
@@ -25,21 +39,10 @@ def recommend_jobs_bert(resume_text, job_descriptions, top_n=3):
     top_results = sorted(list(enumerate(cosine_scores)), key=lambda x: x[1], reverse=True)[:top_n]
     recommendations = [(job_descriptions[i], float(score)) for i, score in top_results]
     return recommendations
-    job_descriptions = [
-    "Looking for a data scientist with Python, Pandas, Machine Learning.",
-    "Frontend Developer with React, JavaScript, HTML, CSS.",
-    "Backend Developer with Node.js, Express, MongoDB, APIs.",
-    "AI/ML Engineer with experience in NLP, Deep Learning, PyTorch.",
-    "DevOps engineer with Docker, Kubernetes, AWS, CI/CD.",
-    "Software engineer skilled in Java, Spring Boot, Microservices.",
-    "Data Analyst with SQL, Excel, Tableau, and data cleaning skills.",
-    "Cybersecurity analyst with experience in network protection, firewalls, and risk management.",
-    "Cloud architect familiar with Azure, AWS, infrastructure scaling.",
-    "Research scientist in machine learning and computer vision.",
-]
 
 # Upload and read resume
-resume_text = extract_resume_text("")  # Change to your file
+resume_text = extract_resume_text(r"D:\job-platform\backend\uploads\resumes\1754362312304-Rahul_J_IT_Resume.pdf")
+
 # Get top 3 recommended jobs
 results = recommend_jobs_bert(resume_text, job_descriptions, top_n=3)
 

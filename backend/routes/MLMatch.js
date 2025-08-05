@@ -12,6 +12,8 @@ router.get("/match-jobs/:userId", async (req, res) => {
     const { userId } = req.params;
     const { limit = 10 } = req.query; // Optional limit parameter
 
+    console.log(`Starting job matching for user: ${userId}`);
+
     // Validate user ID
     if (!mongoose.Types.ObjectId.isValid(userId)) {
       return res.status(400).json({ 
@@ -29,6 +31,8 @@ router.get("/match-jobs/:userId", async (req, res) => {
       });
     }
 
+    console.log(`Found user: ${user.name}, Resume URL: ${user.resumeUrl}`);
+
     if (!user.resumeUrl) {
       return res.status(404).json({ 
         message: "No resume uploaded for this user",
@@ -38,10 +42,12 @@ router.get("/match-jobs/:userId", async (req, res) => {
 
     // Construct resume file path
     const resumePath = path.join(__dirname, "..", user.resumeUrl);
+    console.log(`Resume path: ${resumePath}`);
 
     // Check if resume file exists
     try {
       await fs.access(resumePath);
+      console.log('Resume file exists');
     } catch (error) {
       console.error(`Resume file not found: ${resumePath}`);
       return res.status(404).json({ 
@@ -54,6 +60,7 @@ router.get("/match-jobs/:userId", async (req, res) => {
     let resumeBuffer;
     try {
       resumeBuffer = await fs.readFile(resumePath);
+      console.log(`Resume file size: ${resumeBuffer.length} bytes`);
     } catch (error) {
       console.error(`Error reading resume file: ${error.message}`);
       return res.status(500).json({ 
@@ -69,11 +76,10 @@ router.get("/match-jobs/:userId", async (req, res) => {
     );
 
     // Log jobs for debugging
-    console.log(`Found ${jobs.length} active jobs:`, jobs.map(j => ({
-      title: j.title,
-      skills: j.skills,
-      description: j.description.substring(0, 100)
-    })));
+    console.log(`Found ${jobs.length} active jobs:`);
+    jobs.forEach(job => {
+      console.log(`- ${job.title}: ${job.description.substring(0, 100)}... Skills: ${job.skills}`);
+    });
 
     if (jobs.length === 0) {
       return res.status(200).json({
@@ -88,6 +94,8 @@ router.get("/match-jobs/:userId", async (req, res) => {
     // Pass jobs directly to the local matcher
     const matchedJobIds = await matchJobs(resumeBuffer, jobs);
 
+    console.log(`Received ${matchedJobIds.length} matched job IDs:`, matchedJobIds);
+
     // Limit results if specified
     const limitedJobIds = matchedJobIds.slice(0, parseInt(limit));
 
@@ -99,6 +107,9 @@ router.get("/match-jobs/:userId", async (req, res) => {
         .select('-__v');
       if (job) {
         matchedJobs.push(job);
+        console.log(`Added job to results: ${job.title}`);
+      } else {
+        console.log(`Job with ID ${jobId} not found in database`);
       }
     }
 
@@ -132,7 +143,8 @@ router.get("/match-jobs/:userId", async (req, res) => {
 
     res.status(500).json({ 
       message: "Internal server error during job matching",
-      error: "INTERNAL_SERVER_ERROR"
+      error: "INTERNAL_SERVER_ERROR",
+      details: error.message
     });
   }
 });
@@ -152,7 +164,8 @@ router.get("/match-jobs/health", async (req, res) => {
   } catch (error) {
     res.status(503).json({
       status: "unhealthy",
-      error: "ML service unavailable"
+      error: "ML service unavailable",
+      details: error.message
     });
   }
 });
